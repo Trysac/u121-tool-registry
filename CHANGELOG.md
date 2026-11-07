@@ -9,4 +9,5 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Add versioned tool registry with SemVer resolution, bounded JSON Schema validator, permission gates, and MCP export.
 - Initial project structure from the factory utility template.

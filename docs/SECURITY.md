@@ -2,18 +2,18 @@
 
 ## Threat model
 
-`trysac-tool-registry` is a pure library without I/O. The main risks are:
+### Defended
+- **Supply chain**: No runtime dependencies. Minimal workflow permissions.
+- **Accidental exposure**: Gitleaks used in CI gates.
+- **Hostile input**: All inputs are subjected to schema validation and type checking. Exceptions are raised for invalid inputs.
 
-- **Supply chain**: a compromised dependency or CI action. Mitigation: no runtime dependencies,
-  Dependabot weekly updates, actions pinned to major versions, minimal workflow permissions.
-- **Leaked secrets**: tokens committed by mistake. Mitigation: `gitleaks` runs in the local gates
-  and in CI; `.env` files are git-ignored.
-- **Untrusted input**: callers may pass hostile strings. Mitigation: validate input and fail with
-  explicit exceptions; never `eval`, `exec` or deserialize untrusted data.
+### Not Defended
+- **Sandboxing**: This registry is not a sandbox; registered tools (`fn`) execute with the same privileges as the calling process.
+- **I/O Security**: The registry acts as a proxy/guard but does not restrict I/O performed by the tool handlers themselves.
 
-## Publishing
+### Limits
+- Max schema/value depth: 32.
+- Max tool registry capacity: 1000.
+- Validation: Fail-closed (unknown keywords raise `invalid_schema`).
 
-Releases are published to PyPI with trusted publishing (OIDC) when available, never with a
-long-lived token stored in the repository.
-
-To report a vulnerability, see [SECURITY.md](../SECURITY.md).
+[README](../README.md)
