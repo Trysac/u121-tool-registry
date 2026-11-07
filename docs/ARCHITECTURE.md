@@ -1,29 +1,40 @@
 # Architecture
 
-## Purpose
+`trysac-tool-registry` provides a hardened, dependency-free registry and execution proxy for agent tools.
 
-`trysac-tool-registry` is a small, dependency-free Python library: Versioned registry of agent tools with a bounded JSON Schema subset validator, semver resolution, permission checks before every call and MCP-shaped export
+## Component Layout
 
-## Shape
-
-```text
-caller code --> tool_registry (public API in __init__.py)
-                    |
-                    +-- pure functions, no I/O, no global state
+```
++-------------------------------------------------------------+
+|                          Registry                           |
+|                                                             |
+|  +---------------------+   +-----------------------------+  |
+|  |   SemVer Resolver   |   |    Permission Guard         |  |
+|  +----------+----------+   +--------------+--------------+  |
+|             |                             |                 |
+|             +--------------+--------------+                 |
+|                            |                                |
+|             +--------------v--------------+                 |
+|             | Iterative Schema Validator  |                 |
+|             +--------------+--------------+                 |
+|                            |                                |
+|             +--------------v--------------+                 |
+|             |     Tool Execution (fn)     |                 |
+|             +-----------------------------+                 |
++-------------------------------------------------------------+
 ```
 
-- **Public API**: the names listed in `__all__` of `src/tool_registry/__init__.py`. Anything else is
-  internal and may change without a major version.
-- **Errors**: invalid input raises built-in exceptions (`ValueError`, `TypeError`) with a clear
-  message; the library never prints or exits.
-- **Side effects**: none. If a feature needs I/O, isolate it in its own module behind a small
-  interface and record the choice in an ADR.
+## Invariant Pipeline Order
 
-## Quality contract
+Every call to `Registry.invoke(ref, args, *, granted)` executes four stages in strict succession:
 
-`scripts/check.py` is the single definition of the gates; `fabrica.json` tells the factory and CI
-how to run it. See [TESTING.md](TESTING.md).
+1. **Resolution (`resolve`)**: Matches prefix semver queries (`tool@MAJOR`, `tool@MAJOR.MINOR`, `tool@MAJOR.MINOR.PATCH`) to the highest registered version.
+2. **Permissions Verification**: Inspects required `frozenset[str]` permissions against caller-provided `granted`. If any permission is ungranted, raises `RegistryError('permission_denied')` immediately carrying `.missing` without touching validator or invocation code.
+3. **Schema Validation (`validate`)**: Iterative validation against bounded JSON Schema 2020-12 subset. Any failures abort invocation with `RegistryError('invalid_args')` carrying `.issues`.
+4. **Execution & Telemetry**: Runs underlying tool callable `fn(**args)`. Telemetry callbacks capture execution duration and outcomes (`ok`, `error`, `permission_denied`, `invalid_args`) while strictly stripping caller argument payloads to prevent secret leakage.
 
-## Decisions
+## Security & Fail-Closed Schemas
 
-Architecture decisions are recorded in [decisions/](decisions/) as numbered ADRs.
+- Schemas with unsupported keywords (e.g. `oneOf`, `$ref`, `pattern`) are rejected at registration with `invalid_schema` to guarantee that constraints are never silently ignored.
+- Schema nesting depth is capped at 32.
+- Maximum tool registrations are bounded (default 1,000) to protect against resource exhaustion.

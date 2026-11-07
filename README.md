@@ -1,48 +1,46 @@
-# tool-registry
+# trysac-tool-registry
 
-[![PyPI version](https://img.shields.io/pypi/v/trysac-tool-registry)](https://pypi.org/project/trysac-tool-registry/)
-[![License: MIT](https://img.shields.io/pypi/l/trysac-tool-registry)](LICENSE)
 [![CI](https://github.com/Trysac/u121-tool-registry/actions/workflows/ci.yml/badge.svg)](https://github.com/Trysac/u121-tool-registry/actions/workflows/ci.yml)
 
-Versioned registry of agent tools with a bounded JSON Schema subset validator, semver resolution, permission checks before every call and MCP-shaped export
+Versioned registry of agent tools with a bounded JSON Schema subset validator, semver resolution, permission checks before every call, and MCP-shaped export.
 
 ## Problem
+Agent codebases accumulate tools whose schemas drift from their code, whose versions are implicit, and whose permissions are checked inside each tool. This library provides a centralized registry that validates arguments before calls, resolves versions explicitly, and enforces grants, making tool use auditable and robust.
 
-Describe in two or three sentences the concrete problem this utility solves, who hits it, and what
-they do today without it. Replace this paragraph when the first real feature lands.
-
-## Install
-
-```sh
+## Installation
+```bash
 pip install trysac-tool-registry
-# or
-uv add trysac-tool-registry
 ```
-
-Requires Python 3.10 or newer. No runtime dependencies.
 
 ## Usage
-
 ```python
-import tool_registry
+from tool_registry import Registry, ToolSpec
 
-# normalize() trims surrounding whitespace and lower-cases the text.
-print(tool_registry.normalize("  Hello World "))  # -> "hello world"
-
-# Blank input is rejected explicitly instead of returning an empty string.
-try:
-    tool_registry.normalize("   ")
-except ValueError as exc:
-    print(f"rejected: {exc}")
+reg = Registry()
+reg.register(
+    ToolSpec(
+        name="read_file",
+        version="1.0.0",
+        description="read file",
+        input_schema={
+            "type": "object",
+            "required": ["path"],
+            "properties": {"path": {"type": "string"}},
+        },
+        permissions=frozenset({"fs.read"}),
+        fn=lambda path: f"data from {path}",
+    )
+)
+out = reg.invoke("read_file", {"path": "hello.txt"}, granted={"fs.read"})
+print(out)
 ```
 
-## Documentation
+## Public API Summary
+- **RegistryError Codes**: `invalid_name`, `invalid_version`, `duplicate_version`, `invalid_schema`, `not_found`, `permission_denied`, `invalid_args`, `too_many_tools`.
+- **Limits**: Max 1,000 tools; max 32 nesting depth for schemas and values; max 100 validation issues; error messages are truncated at 200 characters.
+- **Registry Options**: Accepts `clock` (default: `time.monotonic`) and `on_event` callback.
 
-- [Architecture](docs/ARCHITECTURE.md) and [decisions](docs/decisions/)
-- [Testing](docs/TESTING.md) and [security](docs/SECURITY.md)
-- [Project record](docs/PROJECT.md) and [stack](docs/STACK.md)
-- [Changelog](CHANGELOG.md) and [contributing guide](CONTRIBUTING.md)
+## Why not `jsonschema`?
+Compared to using `jsonschema` with ad-hoc checks, `trysac-tool-registry` provides a single dependency-free contract for versions, grants, and arguments. It uses fail-closed schemas (unsupported keywords raise `invalid_schema`) to ensure constraints are never silently ignored.
 
-## License
-
-[MIT](LICENSE) (c) 2026 Miguel Gomez
+[Security](docs/SECURITY.md)

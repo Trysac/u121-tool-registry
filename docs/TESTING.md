@@ -1,20 +1,8 @@
 # Testing
 
-## Running
-
-```sh
-uv run pytest --cov=tool_registry   # tests with coverage report
-uv run python scripts/check.py      # every gate, as CI and the factory run it
-```
+## Existing Tests
+- `tests/test_tool_registry.py`: Covers the full suite of acceptance criteria, including semver resolution (registry behavior with multiple versions), permission enforcement (granted vs missing), and JSON schema validation logic (including nested structures and issue reporting).
 
 ## Policy
-
-- Branch coverage of `src/tool_registry` must stay at or above 80 %; the gate fails below it.
-- Tests exercise the public API (`import tool_registry`) and assert every observable effect:
-  return values, raised exceptions and their messages.
-- Each bug fix starts with a failing test that reproduces it.
-- Tests are deterministic: no network, no wall clock, no dependence on test order.
-
-## Layout
-
-`tests/test_<module>.py` mirrors each public module. Shared fixtures go in `tests/conftest.py`.
+- Branch coverage must remain at or above 80%.
+- Tests are deterministic: no network calls, no reliance on wall clock, no test-order dependencies.
