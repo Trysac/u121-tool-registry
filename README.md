@@ -8,8 +8,10 @@ Versioned registry of agent tools with a bounded JSON Schema subset validator, s
 Agent codebases accumulate tools whose schemas drift from their code, whose versions are implicit, and whose permissions are checked inside each tool. This library provides a centralized registry that validates arguments before calls, resolves versions explicitly, and enforces grants, making tool use auditable and robust.
 
 ## Installation
+
+Not published to PyPI yet. Install it from GitHub:
 ```bash
-pip install trysac-tool-registry
+pip install "git+https://github.com/Trysac/u121-tool-registry"
 ```
 
 ## Usage
